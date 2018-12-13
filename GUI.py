@@ -9,15 +9,18 @@ from tkinter import ttk
 from tkinter import scrolledtext
 from ADS1115 import *
 from LTC2617 import *
-
-########## LTC2617 Frame #############
-class LTC2617_Interface :
-    def __init__(self,master):
-        self.master=master
-        
-    def create_widget_DAC(self) :              
+from scan import CRATE_CONTROLLER, PI2C_INTERFACE
+     
+################## Main Window ###############################
+class Application_window (object):
+    def __init__(self, master) :
+        self.master = master
+     
+    #######create ADC-frame and section######
+    def widget_DAC(self) :              
         self.DAC_frame = tk.LabelFrame(self.master, text= "LTC2617 DAC", labelanchor="n", borderwidth=1)
         self.DAC_frame.pack(fill="both", expand=True,  side="top", pady=10)
+        
         #####Configuration Section####
         self.config_section=tk.LabelFrame(self.DAC_frame, text = "Configuration", borderwidth=0)#configuration section
         self.config_section.pack(fill="both", expand=True, pady=5)
@@ -29,6 +32,7 @@ class LTC2617_Interface :
         self.V_ref_var=tk.DoubleVar()
         self.V_ref_var.set(5.0)
         self.V_ref_entry= tk.Entry(self.config_section, width=10, textvariable=self.V_ref_var)
+        self.V_ref_entry.configure(state="readonly")
         self.V_ref_entry.grid(row=0, column=1, sticky='E', padx=5, pady=3)
         
         #Vreflo
@@ -38,15 +42,14 @@ class LTC2617_Interface :
         self.V_reflo_var=tk.DoubleVar()
         self.V_reflo_var.set(0.0)
         self.V_reflo_entry= tk.Entry(self.config_section, width=10, textvariable=self.V_reflo_var)
+        self.V_reflo_entry.configure(state="readonly")
         self.V_reflo_entry.grid(row=0, column=3, sticky='E', padx=5, pady=5)
         
         #####Conversion Section#####
         self.conver_section= tk.LabelFrame(self.DAC_frame, text = "Conversion to Analog", borderwidth=0)#conversion section
         self.conver_section.pack(fill="both", expand=True, pady=5)
-        
-        #self.chnlA=tk.Label(self.conver_section, text = "Channel A")
-        #self.chnlA.grid(row=0, column=1, sticky='E', padx=5, pady=5)
-        
+       
+        #Channel 
         self.btnA_var = tk.IntVar()
         self.btnA_var.set(1)        
         self.cbA = tk.Checkbutton(self.conver_section, text= "Channel A", var=self.btnA_var)#checkbox for channel A
@@ -60,8 +63,7 @@ class LTC2617_Interface :
         self.btnA=tk.Button(self.conver_section, text="CONVERT", command = self.convert_A_pressed) #convertbuttonA
         self.btnA.grid(row=0, column=2, padx=10)
         
-        #self.chnlB=tk.Label(self.conver_section, text = "Channel B")
-        #self.chnlB.grid(row=1, column=1, sticky='E', padx=5, pady=5)
+        #channel B
         self.btnB_var = tk.IntVar()
         self.btnB_var.set(1)  
         self.cbB = tk.Checkbutton(self.conver_section, text="Channel B", var = self.btnB_var)#checkbox for channel B
@@ -76,41 +78,13 @@ class LTC2617_Interface :
         self.btnB["command"]= self.convert_B_pressed   
         self.btnB.grid(row=1, column=2, padx=10)
         
-        #Create an instance based on the above input
+        #Create an instance of imoported modules based on the above input
         self.LTC2617 = LTC2617(0x41)
-    
-    def convert_A_pressed(self) :
-        V_REF = self.V_ref_var.get()
-        V_REFLO = self.V_reflo_var.get()
-        if self.btnA_var.get()==1:
-            self.LTC2617.write(self.chnA_entry_var.get(), self.btnA_var.get(), self.btnB_var.get())
-        else :
-            self.write(0, self.btnA_var.get(), self.btnB_var.get())
-    def convert_B_pressed(self):
-        if self.btnB_var.get()==1 :
-            self.LTC2617.write(self.chnB_entry_var.get(), self.btnA_var.get(), self.btnB_var.get())
-        else :
-            self.write(0, self.btnA_var.get(), self.btnB_var.get())
-            
-            
-            
         
-    
-  
-        
-        
- 
-################ ADS1115 Frame #############      
-class ADS1115_Interface:
-    def __init__(self, master):
-        self.master=master
-        #MessageBar.__init__(self, master)
-                
-    def create_widget_ADC(self):
+    def widget_ADC(self):
         
         self.ADC_frame = tk.LabelFrame(self.master, text = "ADS1115 ADC",labelanchor="n",  borderwidth=1)
         self.ADC_frame.pack(fill="both", side="top", expand =True, pady =5)
-        
         
         ########Configuration Section#####
         self.config_section1=tk.LabelFrame(self.ADC_frame, text = "Configuration", borderwidth=0)#configuration section
@@ -179,8 +153,7 @@ class ADS1115_Interface:
         self.read_var.set("some random")
         self.read_entry=tk.Entry(self.funct_section,  textvariable = self.read_var)
         self.read_entry.grid(row=0, column=2, sticky='W', padx=10, pady=5)
-        #read_entry.configure(state="readonly")
-        
+                
         #lastread
         self.last_read_ADC=tk.Button(self.funct_section, text= "LAST READ", command = self.last_read_button)
         self.last_read_ADC.grid(row=1, column=0, sticky='W', padx=5, pady=5)
@@ -195,10 +168,65 @@ class ADS1115_Interface:
         self.last_read_entry=tk.Entry(self.funct_section,  textvariable = self.last_read_var)
         self.last_read_entry.grid(row=1, column=2, sticky='W', padx=10, pady=5)
 
-        #Create an instance based on the above input
-        self.full_config()
-        self.ADS1115= Ads1115(self.address, self.channel, self.FSR, self.mode, self.DR)
-     
+        self.ADC_instance() #create instance based on user input
+
+                
+    #########Init and Quit Frame######################
+    def widget_init(self):
+        # instanciate requied stufft to talk to a single crate controller
+        self.PI2C=PI2C_INTERFACE(1,0x76)
+        self.PI2C.SEL_BRANCH("right")
+        self.CONTROLLER=CRATE_CONTROLLER(0x75,self.PI2C) # 0x74 0x70
+        
+        self.init_frame=tk.Frame(self.master)
+        self.init_frame.pack()
+        self.initbtn=tk.Button(self.init_frame, text="REINIT", command = self.INIT_SYSTEM)
+        self.initbtn.grid(column=0,row=0, sticky="n", pady=5)
+        
+        self.quitbtn=tk.Button(self.init_frame, text="QUIT", command=root.quit)
+        self.quitbtn.grid(column=1,row=0, sticky="n", pady=5)
+   
+    
+    ################## Message Bar Frame#############
+    def widget_MB(self):  #
+        
+        self.message_bar = tk.LabelFrame(self.master, text = "Message", borderwidth=1, height=20)
+        self.message_entry = scrolledtext.ScrolledText(self.message_bar, height=3)        
+        self.message_bar.pack(side="bottom")
+        self.message_entry.pack(fill="both")
+        
+    ###### DAC Function### 
+    def convert_A_pressed(self) :
+        try : 
+            V_REF = self.V_ref_var.get()
+            V_REFLO = self.V_reflo_var.get()
+            if self.btnA_var.get()==1:
+                self.LTC2617.write(self.chnA_entry_var.get(), self.btnA_var.get(), self.btnB_var.get())
+            else :
+                self.write(0, self.btnA_var.get(), self.btnB_var.get())
+            self.message_entry.delete(1.0, "end")
+            self.message_entry.insert(tk.INSERT, "Success!")
+            
+        except :
+            print("Error has occured")
+            self.message_entry.delete(1.0, "end")
+            self.message_entry.insert(tk.INSERT, "Error has occured")
+            
+    def convert_B_pressed(self):
+        try :
+            if self.btnB_var.get()==1 :
+                self.LTC2617.write(self.chnB_entry_var.get(), self.btnA_var.get(), self.btnB_var.get())
+            else :
+                self.write(0, self.btnA_var.get(), self.btnB_var.get())
+            self.message_entry.delete(1.0, "end")
+            self.message_entry.insert(tk.INSERT, "Success!")
+            
+        except :
+            print("Error has occured")
+            self.message_entry.delete(1.0, "end")
+            self.message_entry.insert(tk.INSERT, "Error has occured")
+        
+    #### ADC Functions ######## 
     def full_config(self):
         def get_address() :
             return int(self.address_cbbx.get()[2:], 16)
@@ -224,87 +252,82 @@ class ADS1115_Interface:
         self.FSR = get_FSR()
         self.mode = get_mode()
         self.DR = get_DR()
-        
+
+    def ADC_instance (self):
+        #Create an instance based on user input
+        self.full_config()
+        self.ADS1115= Ads1115(self.address, self.channel, self.FSR, self.mode, self.DR) 
+
     def read_button(self):
-        #self.full_config()
-        def read_ADC():#update ADC configuration based on the laest input
-            self.full_config() #update config
-            return self.ADS1115.read()
-        self.read_var.set(read_ADC())
-        '''def read_raw_ADC():
-            return self.ADS1115.raw_data()
+        try :   
+            def read_ADC():#update ADC configuration based on the laest input
+                self.ADC_instance() #update config
+                return self.ADS1115.read()
+            self.read_var.set(read_ADC())
+            
+            def read_raw_ADC():
+                return self.ADS1115.raw_data()  
+            self.message_entry.delete(1.0, "end")
+            self.message_entry.insert(tk.INSERT, "Raw data : {} ".format(self.ADS1115.raw_data())+"\n"+
+                                      "Address : {}".format(self.address) + "\n"+
+                                      "Channel : {}".format(self.channel) + "\n"+
+                                      "FSR : {}".format(self.FSR)+"\n"+
+                                      "Mode : {}".format(self.mode)+"\n"+
+                                      "Data RAte : {}".format(self.DR))
         
-        MessageBar.message_entry.insert(tk.INSERT, "oke")'''
+        except :
+            print("Error has occured")
+            self.message_entry.delete(1.0, "end")
+            self.message_entry.insert(tk.INSERT, "Error has occured")
         
     def last_read_button(self):
-        def last_read_ADC():#update ADC configuration based on the laest input
-            self.full_config() #update config
-            return self.ADS1115.last_read()
-        self.last_read_var.set(last_read_ADC())
-        
-        
-        
-        
-###########Init Button##########
-       
-class InitButton(object):
-    def __init__(self, master):
-        self.master=master
-    def create_widget_init(self):
-        self.init_frame=tk.Frame(self.master)
-        self.init_frame.pack()
-        self.initbtn=tk.Button(self.init_frame, text="REINIT")
-        self.initbtn.grid(column=0,row=0, sticky="n", pady=5)
-        
-        self.quitbtn=tk.Button(self.init_frame, text="QUIT", command=main_window.quit)
-        self.quitbtn.grid(column=1,row=0, sticky="n", pady=5)
-        
- 
-#####################Status and message bar##############       
-class MessageBar ():
-    def __init__(self, master) :
-        self.master=master
-        
-        
-        
-    def create_widget_MB(self):      
-        self.message_bar = tk.LabelFrame(self.master, text = "Message", borderwidth=1)
-        self.message_bar.pack(fill="y", side="bottom")
-        
-        #entry
-        #self.message_entry_var = tk.StringVar()
-        #self.message_entry_var.set("So far so good")
-        self.message_entry = scrolledtext.ScrolledText(self.message_bar)
-        self.message_entry.insert(tk.INSERT, "So far so good")
-        self.message_entry.pack(fill="both", expand=True)
-        
-        
-        
+        try :
+            def last_read_ADC():#update ADC configuration based on the laest input
+                #self.ADC_instance() #update config
+                return self.ADS1115.last_read()
+            self.last_read_var.set(last_read_ADC())
+            
+            def last_read_raw_ADC():
+                return self.ADS1115.raw_data()    
+            self.message_entry.delete(1.0, "end")
+            self.message_entry.insert(tk.INSERT, "Last raw data : {} ".format(self.ADS1115.last_raw_data())+"\n"+
+                                      "Address : {}".format(self.address) + "\n"+
+                                      "Channel : {}".format(self.channel) + "\n"+
+                                      "FSR : {}".format(self.FSR)+"\n"+
+                                      "Mode : {}".format(self.mode)+"\n"+
+                                      "Data RAte : {}".format(self.DR))
+        except IOError :
+            print("Error has occured")
+            self.message_entry.delete(1.0, "end")
+            self.message_entry.insert(tk.INSERT, "Error has occured")
+            
+    
+    #### Init Function##
+    def INIT_SYSTEM(self):
+        try :
+            self.PI2C.SEL_BRANCH("right")
+            self.CONTROLLER.CONF_GPIO()
+            self.message_entry.delete(1.0, "end")
+            self.message_entry.insert(tk.INSERT, "Successfully initiated")
+        except :
+            print("Error has occured")
+            self.message_entry.delete(1.0, "end")
+            self.message_entry.insert(tk.INSERT, "Error has occured")
+    
+    
+    
+######Create GUI###########
+root = tk.Tk()
+root.maxsize(410, 580)
+root.title("ADS1115 & LTC2617")
 
-        
-        
-        
+app = Application_window (root)
+app.widget_DAC()
+app.widget_ADC()
+app.widget_init()
+app.widget_MB()
 
-
-
-
-main_window = tk.Tk()
-main_window.maxsize(410, 580)
-#main_window.geometry("500x600")
-main_window.title("ADS1115 & LTC2617")
-
-DAC_section = LTC2617_Interface(main_window)
-DAC_section.create_widget_DAC()
-
-ADS_section = ADS1115_Interface(main_window)
-ADS_section.create_widget_ADC()
-
-init = InitButton(main_window)
-init.create_widget_init()
-
-message_bar= MessageBar(main_window)
-message_bar.create_widget_MB()
-main_window.mainloop()
+root.mainloop()
     
     
 

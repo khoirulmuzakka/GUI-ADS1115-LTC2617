@@ -3,9 +3,9 @@ Created on Fri Nov 16 10:25:43 2018
 
 @author: khoirul_muzakka
 """
-#import smbus
+import smbus
 import time
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy as np
 
 #Device Address
@@ -46,7 +46,7 @@ data_rate_list = {0b000 : 8,
                   0b110 : 475,
                   0b111 : 860 }
 
-# bus = smbus.SMBus(1)
+bus = smbus.SMBus(1)
 
 
 def read_config(address = 0x48):
@@ -55,7 +55,7 @@ def read_config(address = 0x48):
         assert address in address_list
         
         #Receiving configuration data from ADC
-        config = 0x6343 #bus.read_word_data (address, pointer_config) & 0xFFFF
+        config = bus.read_word_data (address, pointer_config) & 0xFFFF
         swapped_config =( (config & 0xFF) << 8) | (config >> 8)
         print("Configuration register : {0:016b}".format(swapped_config))
         
@@ -89,8 +89,8 @@ def reset (address= 0x48):
     Data rate : 64 SPS""" 
     try :
         assert address in address_list
-        def_config = 0x4363 #channel = 0b100, FSR = 0b001, mode =1, data_rate = 0b011
-        #bus.write_i2c_block_data(address, pointer_config, [def_config >> 8, def_config & 0xFF] )
+        def_config =0x4363 # channel = 0b100, FSR = 0b001, mode =1, data_rate = 0b011
+        bus.write_i2c_block_data(address, pointer_config, [def_config >> 8, def_config & 0xFF] )
         time.sleep(0.1)
     except AssertionError:
         print ("Please enter a valid address")
@@ -109,7 +109,7 @@ class Ads1115(object) :
         
         try :
             assert address in address_list and channel in channel_list.keys() and FSR in FSR_list.keys() and mode in mode_list.keys() and data_rate in data_rate_list.keys() 
-            #self.__write_config()
+            self.__write_config()
             
         except AssertionError :
             print ("Please enter correct values for the arguments")  
@@ -126,7 +126,7 @@ class Ads1115(object) :
         """write the configuration register"""
         try :
             new_config = (1 << 15) | (self.channel << 12) | (self.FSR << 9) | (self.mode << 8)|(self.data_rate << 5) | 0b11
-            #bus.write_i2c_block_data(self.address, pointer_config, [new_config >> 8, new_config & 0xFF]) 
+            bus.write_i2c_block_data(self.address, pointer_config, [new_config >> 8, new_config & 0xFF]) 
             time.sleep(0.1) 
         except IOError :
             print ("Device is not connected")
@@ -135,8 +135,8 @@ class Ads1115(object) :
         """read raw data output from ads1115. The output is 16bit binary two's complement integers.
         Note that we write config register first before retrieving raw data. To get the last conversion raw data
         without first writing config register, use last_raw_data methode"""
-        #self.__write_config()
-        raw_data =0x80c3# bus.read_word_data(self.address, pointer_conversion) & 0xFFFF
+        self.__write_config()
+        raw_data =bus.read_word_data(self.address, pointer_conversion) & 0xFFFF
         return (raw_data >> 8) | ((raw_data & 0xFF) << 8) #swapping byte order
     
     def read(self) :
@@ -154,7 +154,7 @@ class Ads1115(object) :
     def last_raw_data(self):
         """Read raw data from the last conversion without writing config register beforehand. The output is 16bit binary
         two's complement integers"""
-        raw_data = 0x80c3#bus.read_word_data(self.address, pointer_conversion) & 0xFFFF
+        raw_data = bus.read_word_data(self.address, pointer_conversion) & 0xFFFF
         return (raw_data >> 8) | ((raw_data & 0xFF) << 8)
         
     def last_read(self):
@@ -167,54 +167,7 @@ class Ads1115(object) :
             
         return (float(value())/(2**15))*self.__current_FSR_value() 
    
-                            
-    def histogram_singleshot(self, number_of_samples = 200, bins =50 ):
-        """Draw histogram from a multiple single shot conversions."""
-        samples=[]
-        for i in range(1,number_of_samples) :
-            sample = self.raw_data()
-            samples.append(sample)
-            
-        mean_raw_data = np.mean(samples)
-        print ("Mean of Raw Data : {0}".format(mean_raw_data))
-
-        RMS = np.sqrt(np.mean(np.square(samples)))
-        print ("RMS : {0}".format(RMS))
-        
-        std = np.std([float(i) for i in samples])
-        print ("Standard Deviation : {}".format(std))
     
-        plt.hist(samples, bins)
-        plt.title (" ADS1115 Histogram")
-        plt.xlabel ("Raw Data")
-        plt.show()
-
-
-    def histogram(self, number_of_samples = 200, bins =50 ):
-        """Draw histogram in continuous conversion mode"""
-        samples=[]
-        try :
-            assert self.mode == 0
-            for i in range(1,number_of_samples) :            
-                sample = self.last_raw_data()
-                time.sleep(0.1)
-                samples.append(sample)
-                       
-            mean_raw_data = np.mean(samples)
-            print ("Mean of Raw Data : {0}".format(mean_raw_data))
-
-            RMS = np.sqrt(np.mean(np.square(samples)))
-            print ("RMS : {0}".format(RMS))
-        
-            std = np.std([float(i) for i in samples])
-            print ("Standard Deviation : {}".format(std))
-    
-            plt.hist(samples, bins)
-            plt.title ("ADS1115 Histogram")
-            plt.xlabel ("Raw Data")
-            plt.show()
-        except AssertionError :
-                print ("The device must be in the continuous conversion mode")
 
         
 

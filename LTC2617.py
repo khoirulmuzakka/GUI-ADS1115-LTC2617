@@ -1,5 +1,5 @@
 """Author : Khoirul Faiq Muzaka"""
-#import smbus
+import smbus
 import time
 
 #command register 
@@ -17,7 +17,7 @@ address_all_DACs = 0b1111
 V_REF = 5.0
 V_REFLO = 0
 
-#bus = smbus.SMBus(1)
+bus = smbus.SMBus(1)
 
 
 class LTC2617(object) :
@@ -54,8 +54,8 @@ class LTC2617(object) :
         """Write V_out volts to DAC"""
         try :
             assert abs(V_out) <= V_REF
-            #data = (int(((V_out-V_REFLO)/(V_REF-V_REFLO))*2**14) << 2) & 0xFFFF
-            #bus.write_i2c_block_data(self.address, self.__pointer_register(write_and_powerup, DAC_A , DAC_B), [(data >> 8) & 0xFF, data & 0xFF])
+            data = (int(((V_out-V_REFLO)/(V_REF-V_REFLO))*2**14) << 2) & 0xFFFF
+            bus.write_i2c_block_data(self.address, self.__pointer_register(write_and_powerup, DAC_A , DAC_B), [(data >> 8) & 0xFF, data & 0xFF])
             time.sleep(0.1)            
         except AssertionError :
             print ("The maxium value of V_out is V_REF")
@@ -65,14 +65,14 @@ class LTC2617(object) :
     def __power_up (self, DAC_A =1, DAC_B =1):
         """Power up or update either or both DAC"""
         try :
-            pass #bus.write_i2c_block_data(self.address, self.__pointer_register(power_up_DAC, DAC_A, DAC_B), [0,0])
+            bus.write_i2c_block_data(self.address, self.__pointer_register(power_up_DAC, DAC_A, DAC_B), [0,0])
         except IOError :
             print ("Device is not connected or Address is wrong")
         
     def power_down (self, DAC_A =1, DAC_B=1):
         """Power down or update either or both DAC"""
         try :
-            pass#bus.write_i2c_block_data(self.address, self.__pointer_register( power_down, DAC_A, DAC_B), [0,0])
+            bus.write_i2c_block_data(self.address, self.__pointer_register( power_down, DAC_A, DAC_B), [0,0])
             
         except IOError:
             print ("Device is not connected")
